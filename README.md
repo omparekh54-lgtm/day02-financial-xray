@@ -41,6 +41,7 @@ Export action plan or cleaned transactions
 
 - Multi-statement local import (CSV/XLSX/XLS)
 - Per-file column mapping and validation
+- India-first `DD/MM/YYYY` parsing for slash/dash statement dates, avoiding browser month/day ambiguity
 - Downloadable CSV template for first-time users
 - Merchant normalization
 - Cross-account internal-transfer reconciliation
@@ -83,9 +84,13 @@ Helpful optional fields:
 
 Supported now: `.csv`, `.xlsx`, `.xls`.
 
+### Date interpretation
+
+For textual slash/dash dates, Financial X-Ray uses the India-first convention `DD/MM/YYYY`. This rule is applied before generic browser date parsing so an input such as `01/02/2026` is interpreted as **1 February 2026**, not 2 January 2026. ISO `YYYY-MM-DD` and spreadsheet-native date cells are also supported.
+
 ### PDF limitation
 
-The UI accepts PDF selection only to give a transparent, useful error message. Browser-safe statement PDF extraction is **not claimed as complete in this version**; users are asked to export CSV/XLSX instead. This avoids shipping fragile OCR while pretending it is reliable.
+PDF selection is intentionally **not offered** in the production file picker because browser-local PDF statement extraction is not reliable enough in this version. Users are asked to export CSV/XLSX instead. This avoids shipping a dead-end workflow or fragile OCR while pretending it is trustworthy.
 
 ## Methodology
 
@@ -120,9 +125,9 @@ Scenarios are arithmetic overlays on the baseline forecast. The app does **not**
 
 ## Tests
 
-`npm test` covers merchant normalization, transfer reconciliation, recurring detection, forecast/action generation, scenario sensitivity, and uncertainty-band widening.
+`npm test` covers merchant normalization, transfer reconciliation, recurring detection, forecast/action generation, scenario sensitivity, uncertainty-band widening, ambiguous India-first date parsing, and normalization of `DD/MM/YYYY` statement rows.
 
-The production deployment runs the repository tests before the Next.js build. The verified cloud build currently passes all 6 tests and TypeScript compilation.
+The production deployment runs the repository tests before the Next.js build. The QA target is 8 passing tests plus TypeScript/Next.js production compilation before promotion.
 
 ## Local development
 
@@ -151,7 +156,8 @@ Uploaded workbook bytes are read in the browser. This project has no server rout
 ## Known limitations / next improvements
 
 - No reliable PDF statement extraction yet
+- Textual slash/dash dates are intentionally interpreted as India-first `DD/MM/YYYY`; users with `MM/DD/YYYY` exports should convert dates or use spreadsheet date cells/ISO format
 - Merchant normalization is rule-based rather than a production-scale merchant entity model
-- Transfer matching can misclassify coincidentally equal opposite transactions
+- Transfer matching can misclassify coincidentally equal opposite transactions and should eventually support user confirmation
 - Forecast does not model salary dates, debt amortization, inflation, tax, or causal spending behaviour
 - Sinking-fund detection needs repeated historical examples and will miss genuinely one-off annual expenses with only one observation
