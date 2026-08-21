@@ -37,21 +37,29 @@ function parseNumber(value:unknown):number{
   const n=Number(String(value??'').replace(/[₹,$£€\s,]/g,'').replace(/\((.*)\)/,'-$1'));
   return Number.isFinite(n)?n:0;
 }
-function parseDate(value:unknown):string{
+
+export function parseStatementDate(value:unknown):string{
   if(value instanceof Date&&!Number.isNaN(value.valueOf()))return value.toISOString().slice(0,10);
   if(typeof value==='number') { const d=XLSX.SSF.parse_date_code(value); if(d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`; }
-  const text=String(value??'').trim(); const direct=new Date(text); if(!Number.isNaN(direct.valueOf()))return direct.toISOString().slice(0,10);
-  const m=text.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/); if(m){let y=Number(m[3]);if(y<100)y+=2000;return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;}
+  const text=String(value??'').trim();
+  if(!text)return '';
+  const isoMatch=text.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T].*)?$/);
+  if(isoMatch){const y=Number(isoMatch[1]),m=Number(isoMatch[2]),d=Number(isoMatch[3]);if(m>=1&&m<=12&&d>=1&&d<=31)return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+  // Financial X-Ray is INR/India-first, so slash/dash dates are interpreted as DD/MM/YYYY.
+  // Parse this before Date(...) because browsers commonly interpret 01/02/2026 as Jan 2 (MM/DD).
+  const dmy=text.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
+  if(dmy){let y=Number(dmy[3]);const m=Number(dmy[2]),d=Number(dmy[1]);if(y<100)y+=2000;if(m>=1&&m<=12&&d>=1&&d<=31)return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;return '';}
+  const direct=new Date(text); if(!Number.isNaN(direct.valueOf()))return direct.toISOString().slice(0,10);
   return '';
 }
 
-function categoryFor(description:string,provided:string){if(provided.trim())return provided.trim(); const d=description.toLowerCase(); if(/salary|payroll|interest credit|refund/.test(d))return 'Income'; if(/rent/.test(d))return 'Housing'; if(/zomato|swiggy|restaurant|cafe|starbucks/.test(d))return 'Dining'; if(/uber|ola|fuel|petrol|metro/.test(d))return 'Transport'; if(/netflix|spotify|prime|subscription/.test(d))return 'Subscriptions'; if(/amazon|flipkart|mall|store/.test(d))return 'Shopping'; if(/insurance|lic/.test(d))return 'Insurance'; if(/electric|mobile|broadband|internet|water|gas/.test(d))return 'Utilities'; return 'Other';}
+function categoryFor(description:string,provided:string){if(provided.trim())return provided.trim(); const d=description.toLowerCase(); if(/self transfer|transfer to|transfer from|fund transfer|credit card payment|payment received from|own account/.test(d))return 'Transfer'; if(/salary|payroll|interest credit|refund/.test(d))return 'Income'; if(/rent/.test(d))return 'Housing'; if(/zomato|swiggy|restaurant|cafe|starbucks/.test(d))return 'Dining'; if(/uber|ola|fuel|petrol|metro/.test(d))return 'Transport'; if(/netflix|spotify|prime|subscription/.test(d))return 'Subscriptions'; if(/amazon|flipkart|mall|store/.test(d))return 'Shopping'; if(/insurance|lic/.test(d))return 'Insurance'; if(/electric|mobile|broadband|internet|water|gas/.test(d))return 'Utilities'; return 'Other';}
 
 export function normalizeRows(parsed:ParsedFile,m:ColumnMapping):{transactions:Transaction[];rejected:number;warnings:string[]}{
   if(!m.date||!m.description||(!m.amount&&!(m.debit||m.credit))) throw new Error('Map Date, Description, and either Amount or Debit/Credit.');
   const out:Transaction[]=[]; let rejected=0;
   parsed.rows.forEach((row,index)=>{
-    const date=parseDate(row[m.date]); const description=String(row[m.description]??'').trim();
+    const date=parseStatementDate(row[m.date]); const description=String(row[m.description]??'').trim();
     let signed=0;
     if(m.amount) signed=parseNumber(row[m.amount]);
     else { const debit=m.debit?parseNumber(row[m.debit]):0; const credit=m.credit?parseNumber(row[m.credit]):0; signed=credit-Math.abs(debit); }
