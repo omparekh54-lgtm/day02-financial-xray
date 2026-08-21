@@ -17,10 +17,10 @@ function applySavedCategoryRules(rows: Transaction[]): Transaction[] {
   return rows.map((row) => rules[row.merchant] ? { ...row, category: rules[row.merchant] } : row);
 }
 
-export function AppShell(){
-  const [transactions,setTransactions]=useState<Transaction[]|null>(null);
-  const [label,setLabel]=useState('');
-  const [balance,setBalance]=useState(0);
+export function AppShell({ startDemo = false }: { startDemo?: boolean }){
+  const [transactions,setTransactions]=useState<Transaction[]|null>(()=>startDemo?sampleTransactions():null);
+  const [label,setLabel]=useState(startDemo?'Sample household · 12 months':'');
+  const [balance,setBalance]=useState(startDemo?185000:0);
   const analysis=useMemo(()=>transactions?analyzeTransactions(transactions,balance):null,[transactions,balance]);
   const load = (rows: Transaction[], name: string, currentBalance: number) => { setTransactions(applySavedCategoryRules(rows)); setLabel(name); setBalance(currentBalance); };
   const persistAndSet = (rows: Transaction[]) => {
