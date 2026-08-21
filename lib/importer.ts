@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import type { ColumnMapping, RawRow, Transaction } from './types';
-import { normalizeMerchant } from './finance';
+import { normalizeMerchant } from './finance.ts';
 
 export interface ParsedFile { fileName:string; rows:RawRow[]; columns:string[]; }
 
